@@ -1,7 +1,9 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { toNodeHandler } from "better-auth/node";
 import { client, connectDB, getDB } from "./db";
+import { auth } from "./auth";
 
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
@@ -10,6 +12,11 @@ const app = express();
 
 // Allow the Next.js client to call this API with cookies
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
+
+// BetterAuth handles all /api/auth/* routes.
+// It must be mounted BEFORE express.json().
+app.all("/api/auth/*splat", toNodeHandler(auth));
+
 app.use(express.json());
 
 // ---------- API routes ----------

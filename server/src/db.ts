@@ -1,4 +1,4 @@
-import { MongoClient, type Db } from "mongodb";
+import { MongoClient } from "mongodb";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -9,21 +9,21 @@ if (!MONGODB_URI) {
 }
 
 export const client = new MongoClient(MONGODB_URI);
-let db: Db;
+
+// The database name is taken from the connection string.
+// Creating the handle does not connect yet; connectDB() does that.
+export const db = client.db();
 
 // Connect once when the server starts
-export async function connectDB(): Promise<Db> {
+export async function connectDB() {
   await client.connect();
-  db = client.db(); // database name is taken from the connection string
 
   // Ping the deployment to confirm the connection works
   await db.command({ ping: 1 });
   console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  return db;
 }
 
 // Use this in any file to get the database, e.g. getDB().collection("courses")
-export function getDB(): Db {
-  if (!db) throw new Error("Database is not connected yet");
+export function getDB() {
   return db;
 }
