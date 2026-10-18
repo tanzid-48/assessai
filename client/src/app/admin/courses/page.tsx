@@ -10,7 +10,10 @@ type Course = {
   title: string;
   credits: number;
   teacherId?: string | null;
+  teacherName?: string | null;
 };
+
+type Teacher = { id: string; name: string; email: string };
 
 // Gradient pairs for the course icons. The course code decides which one is used,
 // so a course always keeps the same colour.
@@ -31,6 +34,9 @@ function gradientFor(code: string) {
 
 const inputClass =
   "w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-neutral-700 dark:bg-neutral-950";
+
+const selectClass =
+  "w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-950";
 
 function StatCard({
   label,
@@ -60,16 +66,26 @@ function StatCard({
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
+  const [pageError, setPageError] = useState("");
+  // The course whose teacher is being saved right now
+  const [assigningId, setAssigningId] = useState<string | null>(null);
 
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
   const [credits, setCredits] = useState("3");
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Show a green message for three seconds
+  function showNotice(message: string) {
+    setNotice(message);
+    setTimeout(() => setNotice(""), 3000);
+  }
 
   // Load all courses from the server
   async function loadCourses() {
@@ -77,20 +93,31 @@ export default function AdminCoursesPage() {
       const data = await api<{ courses: Course[] }>("/api/courses");
       setCourses(data.courses);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load courses");
+      setPageError(e instanceof Error ? e.message : "Failed to load courses");
     } finally {
       setLoading(false);
     }
   }
 
+  // The teacher list fills the dropdown on every course card
+  async function loadTeachers() {
+    try {
+      const data = await api<{ users: Teacher[] }>("/api/users?role=teacher");
+      setTeachers(data.users);
+    } catch (e) {
+      setPageError(e instanceof Error ? e.message : "Failed to load teachers");
+    }
+  }
+
   useEffect(() => {
     loadCourses();
+    loadTeachers();
   }, []);
 
   // Create a new course, refresh the list and show a short success message
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setFormError("");
     setSaving(true);
 
     try {
@@ -98,17 +125,39 @@ export default function AdminCoursesPage() {
         method: "POST",
         body: JSON.stringify({ code, title, credits: Number(credits) }),
       });
-      setNotice(`${code.toUpperCase()} was added successfully`);
-      setTimeout(() => setNotice(""), 3000);
+      showNotice(`${code.toUpperCase()} was added successfully`);
       setCode("");
       setTitle("");
       setCredits("3");
       setShowForm(false);
       await loadCourses();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create course");
+      setFormError(
+        err instanceof Error ? err.message : "Could not create course",
+      );
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Assign a teacher to a course. An empty value removes the teacher.
+  async function assignTeacher(courseId: string, teacherId: string) {
+    setPageError("");
+    setAssigningId(courseId);
+
+    try {
+      await api(`/api/courses/${courseId}/teacher`, {
+        method: "PATCH",
+        body: JSON.stringify({ teacherId: teacherId || null }),
+      });
+      await loadCourses();
+      showNotice(teacherId ? "Teacher assigned" : "Teacher removed");
+    } catch (err) {
+      setPageError(
+        err instanceof Error ? err.message : "Could not update the teacher",
+      );
+    } finally {
+      setAssigningId(null);
     }
   }
 
@@ -133,13 +182,13 @@ export default function AdminCoursesPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Courses</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Create and manage the courses offered this semester.
+            Create courses and assign a teacher to each one.
           </p>
         </div>
         <button
           onClick={() => {
             setShowForm((v) => !v);
-            setError("");
+            setFormError("");
           }}
           className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:brightness-110"
         >
@@ -151,6 +200,13 @@ export default function AdminCoursesPage() {
       {notice && (
         <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
           {notice}
+        </div>
+      )}
+
+      {/* Page-level error */}
+      {pageError && (
+        <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+          {pageError}
         </div>
       )}
 
@@ -216,7 +272,9 @@ export default function AdminCoursesPage() {
             />
           </div>
 
-          {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+          {formError && (
+            <p className="mt-3 text-sm text-red-500">{formError}</p>
+          )}
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <button
@@ -297,17 +355,39 @@ export default function AdminCoursesPage() {
                     </div>
                   </div>
 
-                  <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-4 text-xs dark:border-neutral-800">
-                    <span className="rounded-full bg-neutral-100 px-2.5 py-1 font-medium dark:bg-neutral-800">
-                      {c.credits} credits
-                    </span>
-                    <span
-                      className={
-                        c.teacherId ? "text-emerald-500" : "text-amber-500"
-                      }
-                    >
-                      {c.teacherId ? "Teacher assigned" : "No teacher yet"}
-                    </span>
+                  <div className="mt-5 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                    <div className="mb-3 flex items-center justify-between text-xs">
+                      <span className="rounded-full bg-neutral-100 px-2.5 py-1 font-medium dark:bg-neutral-800">
+                        {c.credits} credits
+                      </span>
+                      <span
+                        className={
+                          c.teacherId ? "text-emerald-500" : "text-amber-500"
+                        }
+                      >
+                        {c.teacherId ? "Teacher assigned" : "No teacher yet"}
+                      </span>
+                    </div>
+
+                    {/* Teacher dropdown: saves as soon as a teacher is picked */}
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-neutral-500">
+                        Teacher
+                      </span>
+                      <select
+                        value={c.teacherId ?? ""}
+                        disabled={assigningId === c._id}
+                        onChange={(e) => assignTeacher(c._id, e.target.value)}
+                        className={selectClass}
+                      >
+                        <option value="">Not assigned</option>
+                        {teachers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 </div>
               );
