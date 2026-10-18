@@ -4,6 +4,7 @@ import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { client, connectDB, getDB } from "./db";
 import { auth } from "./auth";
+import { requireAuth, requireRole } from "./middleware";
 
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
@@ -38,6 +39,17 @@ app.get("/api/health", async (_req, res) => {
     db: getDB().databaseName,
     time: new Date().toISOString(),
   });
+});
+
+// Returns the logged-in user (any role)
+app.get("/api/me", requireAuth, (_req, res) => {
+  const { id, name, email, role } = res.locals.user;
+  res.json({ user: { id, name, email, role } });
+});
+
+// Test route to prove role checks work (admin only). Remove later.
+app.get("/api/admin/ping", requireRole("admin"), (_req, res) => {
+  res.json({ ok: true, message: "Hello admin" });
 });
 
 // Feature routers will be mounted here later, one file per feature:
