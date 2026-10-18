@@ -82,7 +82,7 @@ export default function DashboardShell({
                   onClick={() => setOpen(false)}
                   className={`block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     active
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30"
                       : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                   }`}
                 >

@@ -4,7 +4,7 @@ export type NavItem = { label: string; href: string; soon?: boolean };
 export const NAV: Record<Role, NavItem[]> = {
   admin: [
     { label: "Dashboard", href: "/admin" },
-    { label: "Courses", href: "/admin/courses", soon: true },
+   { label: "Courses", href: "/admin/courses" },
     { label: "Users", href: "/admin/users", soon: true },
     { label: "Enrolments", href: "/admin/enrolments", soon: true },
   ],
