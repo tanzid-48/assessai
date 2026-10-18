@@ -5,6 +5,7 @@ import { toNodeHandler } from "better-auth/node";
 import { client, connectDB, getDB } from "./db";
 import { auth } from "./auth";
 import { requireAuth, requireRole } from "./middleware";
+import { coursesRouter } from "./courses";
 
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
@@ -53,7 +54,7 @@ app.get("/api/admin/ping", requireRole("admin"), (_req, res) => {
 });
 
 // Feature routers will be mounted here later, one file per feature:
-// app.use("/api/courses", coursesRouter);
+app.use("/api/courses", coursesRouter);
 // app.use("/api/questions", questionsRouter);
 // app.use("/api/exams", examsRouter);
 
