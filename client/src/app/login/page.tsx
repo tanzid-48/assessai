@@ -4,6 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import {
+  AuthShell,
+  ErrorBox,
+  Field,
+  GoogleButton,
+  OrDivider,
+  SubmitButton,
+} from "@/components/AuthShell";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +36,7 @@ export default function LoginPage() {
   }
 
   async function handleGoogle() {
-    // After Google, the user comes back to /dashboard which redirects by role
+    // After Google, the user returns to /dashboard, which redirects by role
     await authClient.signIn.social({
       provider: "google",
       callbackURL: `${window.location.origin}/dashboard`,
@@ -36,58 +44,46 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-center text-2xl font-bold">PUB AssessAI</h1>
-        <p className="mt-1 text-center text-sm text-gray-500">
-          Log in to continue
-        </p>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Log in to continue to your dashboard."
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Field
+          label="Email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="you@pub.edu"
+          autoComplete="email"
+        />
+        <Field
+          label="Password"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          placeholder="Your password"
+          autoComplete="current-password"
+        />
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <input
-            type="email"
-            required
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border bg-transparent px-3 py-2"
-          />
-          <input
-            type="password"
-            required
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded border bg-transparent px-3 py-2"
-          />
+        <ErrorBox message={error} />
+        <SubmitButton loading={loading}>
+          {loading ? "Logging in..." : "Log in"}
+        </SubmitButton>
+      </form>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+      <OrDivider />
+      <GoogleButton onClick={handleGoogle} label="Continue with Google" />
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded bg-indigo-600 px-3 py-2 font-medium text-white disabled:opacity-60"
-          >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </form>
-
-        <div className="my-4 text-center text-sm text-gray-500">or</div>
-
-        <button
-          onClick={handleGoogle}
-          className="w-full rounded border px-3 py-2 font-medium hover:bg-gray-100 hover:text-black"
+      <p className="mt-8 text-center text-sm text-neutral-500">
+        New here?{" "}
+        <Link
+          href="/register"
+          className="font-semibold text-indigo-500 hover:underline"
         >
-          Continue with Google
-        </button>
-
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-indigo-500 underline">
-            Register
-          </Link>
-        </p>
-      </div>
-    </main>
+          Create a student account
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

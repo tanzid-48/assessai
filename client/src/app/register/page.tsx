@@ -4,6 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import {
+  AuthShell,
+  ErrorBox,
+  Field,
+  GoogleButton,
+  OrDivider,
+  SubmitButton,
+} from "@/components/AuthShell";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,65 +47,69 @@ export default function RegisterPage() {
     router.push("/dashboard");
   }
 
+  async function handleGoogle() {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: `${window.location.origin}/dashboard`,
+    });
+  }
+
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-center text-2xl font-bold">
-          Create student account
-        </h1>
+    <AuthShell
+      title="Create your account"
+      subtitle="Students can register here. Teachers and admins are added by the department."
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Field
+          label="Full name"
+          value={name}
+          onChange={setName}
+          placeholder="Your name"
+          autoComplete="name"
+        />
+        <Field
+          label="Email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="you@pub.edu"
+          autoComplete="email"
+        />
+        <Field
+          label="Password"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          placeholder="At least 8 characters"
+          autoComplete="new-password"
+        />
+        <Field
+          label="Confirm password"
+          type="password"
+          value={confirm}
+          onChange={setConfirm}
+          placeholder="Repeat the password"
+          autoComplete="new-password"
+        />
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <input
-            type="text"
-            required
-            placeholder="Full name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border bg-transparent px-3 py-2"
-          />
-          <input
-            type="email"
-            required
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border bg-transparent px-3 py-2"
-          />
-          <input
-            type="password"
-            required
-            placeholder="Password (min 8 characters)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded border bg-transparent px-3 py-2"
-          />
-          <input
-            type="password"
-            required
-            placeholder="Confirm password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            className="w-full rounded border bg-transparent px-3 py-2"
-          />
+        <ErrorBox message={error} />
+        <SubmitButton loading={loading}>
+          {loading ? "Creating account..." : "Create account"}
+        </SubmitButton>
+      </form>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+      <OrDivider />
+      <GoogleButton onClick={handleGoogle} label="Sign up with Google" />
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded bg-indigo-600 px-3 py-2 font-medium text-white disabled:opacity-60"
-          >
-            {loading ? "Creating account..." : "Register"}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Already have an account?{" "}
-          <Link href="/login" className="text-indigo-500 underline">
-            Login
-          </Link>
-        </p>
-      </div>
-    </main>
+      <p className="mt-8 text-center text-sm text-neutral-500">
+        Already have an account?{" "}
+        <Link
+          href="/login"
+          className="font-semibold text-indigo-500 hover:underline"
+        >
+          Log in
+        </Link>
+      </p>
+    </AuthShell>
   );
 }
