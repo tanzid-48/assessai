@@ -3,9 +3,11 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import DashboardShell from "@/components/DashboardShell";
+import type { Role } from "@/lib/nav";
 
 type Props = {
-  role: "admin" | "teacher" | "student";
+  role: Role;
   children: React.ReactNode;
 };
 
@@ -15,6 +17,8 @@ export default function RoleGuard({ role, children }: Props) {
   const userRole =
     (session?.user as { role?: string } | undefined)?.role ?? "student";
 
+  // Redirect if not logged in or the role does not match.
+  // This is only for convenience; the real protection is requireRole on the server.
   useEffect(() => {
     if (isPending) return;
     if (!session) router.replace("/login");
@@ -27,26 +31,20 @@ export default function RoleGuard({ role, children }: Props) {
   }
 
   if (isPending || !session || userRole !== role) {
-    return <p className="p-8 text-gray-500">Loading...</p>;
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
+        Loading...
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-3">
-        <h1 className="font-bold">PUB AssessAI</h1>
-        <div className="flex items-center gap-4 text-sm">
-          <span>
-            {session.user.name} ({userRole})
-          </span>
-          <button
-            onClick={handleLogout}
-            className="rounded border px-3 py-1 hover:bg-gray-100 hover:text-black"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-      <main className="p-6">{children}</main>
-    </div>
+    <DashboardShell
+      role={role}
+      userName={session.user.name}
+      onLogout={handleLogout}
+    >
+      {children}
+    </DashboardShell>
   );
 }
