@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Search, UserMinus, UserPlus, Users } from "lucide-react";
+import { toast } from "sonner";
 import RoleGuard from "@/components/RoleGuard";
 import PageHeader from "@/components/PageHeader";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { api } from "@/lib/api";
 
 type Course = { _id: string; code: string; title: string; credits: number };
@@ -44,15 +46,11 @@ function EnrolmentsAdmin() {
   const [picked, setPicked] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [error, setError] = useState("");
-
-  // Show a green message for three seconds
-  function showNotice(message: string) {
-    setNotice(message);
-    setTimeout(() => setNotice(""), 3000);
-  }
+  // The student waiting for confirmation, and the row being removed right now
+  const [toRemove, setToRemove] = useState<Enrolment | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
 
   // Load all courses and all students once
   useEffect(() => {
@@ -66,7 +64,7 @@ function EnrolmentsAdmin() {
         if (c.courses.length) setCourseId(c.courses[0]._id);
       })
       .catch((e) =>
-        setError(e instanceof Error ? e.message : "Failed to load data"),
+        setLoadError(e instanceof Error ? e.message : "Failed to load data"),
       )
       .finally(() => setLoading(false));
   }, []);
@@ -82,7 +80,9 @@ function EnrolmentsAdmin() {
       })
       .catch((e) => {
         if (!cancelled)
-          setError(e instanceof Error ? e.message : "Failed to load students");
+          toast.error(
+            e instanceof Error ? e.message : "Failed to load students",
+          );
       });
 
     return () => {
@@ -111,7 +111,6 @@ function EnrolmentsAdmin() {
     setCourseId(id);
     setPicked([]);
     setSearch("");
-    setError("");
   }
 
   function togglePick(id: string) {
@@ -122,7 +121,6 @@ function EnrolmentsAdmin() {
   async function addSelected() {
     if (!picked.length) return;
     setBusy(true);
-    setError("");
 
     try {
       const r = await api<{ added: number; alreadyEnrolled: number }>(
@@ -132,27 +130,37 @@ function EnrolmentsAdmin() {
           body: JSON.stringify({ courseId, studentIds: picked }),
         },
       );
-      showNotice(`${r.added} student${r.added === 1 ? "" : "s"} enrolled`);
+      toast.success(
+        `${r.added} student${r.added === 1 ? "" : "s"} enrolled in ${course?.code ?? "the course"}`,
+      );
       setPicked([]);
       setRefresh((n) => n + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not enrol the students");
+      toast.error(
+        e instanceof Error ? e.message : "Could not enrol the students",
+      );
     } finally {
       setBusy(false);
     }
   }
 
-  // Remove one student from the course
-  async function remove(row: Enrolment) {
-    if (!window.confirm(`Remove ${row.name} from this course?`)) return;
-    setError("");
+  // Close the dialog at once, fade the row while the server works, then it disappears
+  async function confirmRemove() {
+    if (!toRemove) return;
+    const row = toRemove;
+    setToRemove(null);
+    setLeavingId(row.id);
 
     try {
       await api(`/api/enrollments/${row.id}`, { method: "DELETE" });
-      showNotice(`${row.name} was removed`);
+      toast.success(`${row.name} was removed`);
       setRefresh((n) => n + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not remove the student");
+      toast.error(
+        e instanceof Error ? e.message : "Could not remove the student",
+      );
+    } finally {
+      setLeavingId(null);
     }
   }
 
@@ -171,14 +179,9 @@ function EnrolmentsAdmin() {
         description="Choose a course, then add or remove its students."
       />
 
-      {notice && (
-        <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-600 dark:text-emerald-400">
-          {notice}
-        </div>
-      )}
-      {error && (
+      {loadError && (
         <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-500">
-          {error}
+          {loadError}
         </div>
       )}
 
@@ -268,7 +271,11 @@ function EnrolmentsAdmin() {
                   {enrolled.map((row) => (
                     <li
                       key={row.id}
-                      className="flex items-center gap-3 px-4 py-3 sm:px-5"
+                      className={`anim-row-in flex items-center gap-3 px-4 py-3 transition-opacity duration-200 sm:px-5 ${
+                        leavingId === row.id
+                          ? "pointer-events-none opacity-40"
+                          : ""
+                      }`}
                     >
                       <Avatar name={row.name} />
                       <div className="min-w-0 flex-1">
@@ -280,7 +287,7 @@ function EnrolmentsAdmin() {
                         </p>
                       </div>
                       <button
-                        onClick={() => remove(row)}
+                        onClick={() => setToRemove(row)}
                         aria-label={`Remove ${row.name}`}
                         title="Remove from course"
                         className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
@@ -346,7 +353,7 @@ function EnrolmentsAdmin() {
                 ) : (
                   <ul className="max-h-72 divide-y divide-neutral-200 overflow-y-auto rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
                     {available.map((s) => (
-                      <li key={s.id}>
+                      <li key={s.id} className="anim-row-in">
                         <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
                           <input
                             type="checkbox"
@@ -374,7 +381,11 @@ function EnrolmentsAdmin() {
                   disabled={busy || picked.length === 0}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  <UserPlus size={16} />
+                  {busy ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  ) : (
+                    <UserPlus size={16} />
+                  )}
                   {busy
                     ? "Enrolling..."
                     : picked.length
@@ -386,6 +397,19 @@ function EnrolmentsAdmin() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={toRemove !== null}
+        title="Remove student?"
+        message={
+          toRemove
+            ? `${toRemove.name} will be removed from ${course?.code ?? "this course"}. You can enrol them again later.`
+            : ""
+        }
+        confirmLabel="Remove"
+        onConfirm={confirmRemove}
+        onCancel={() => setToRemove(null)}
+      />
     </>
   );
 }
