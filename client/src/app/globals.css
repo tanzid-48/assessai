@@ -24,3 +24,30 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* Small animations used by toasts, dialogs and list rows */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-in { animation: fade-in 150ms ease-out; }
+.anim-slide-up { animation: slide-up 220ms ease-out; }
+.anim-pop-in { animation: pop-in 160ms ease-out; }
+.anim-row-in { animation: row-in 220ms ease-out; }
+
+/* Respect users who turn animations off in their system settings */
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-in, .anim-slide-up, .anim-pop-in, .anim-row-in { animation: none; }
+}

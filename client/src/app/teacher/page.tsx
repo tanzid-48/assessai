@@ -118,6 +118,7 @@ function TeacherHome() {
                       code={c.code}
                       title={c.title}
                       credits={c.credits}
+                      href={`/teacher/courses/${c._id}`}
                     />
                   ))}
                 </div>
