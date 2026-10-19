@@ -1,26 +1,88 @@
-export type Role = "admin" | "teacher" | "student";
-export type NavItem = { label: string; href: string; soon?: boolean };
+import {
+  BookOpen,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  LayoutDashboard,
+  Library,
+  MessageSquare,
+  Pencil,
+  Timer,
+  TrendingUp,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
+export type Role = "admin" | "teacher" | "student";
+export type NavItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  soon?: boolean;
+};
+
+// Items marked soon are hidden from the sidebar until their page is built.
+// When a page is ready, delete its "soon: true".
 export const NAV: Record<Role, NavItem[]> = {
   admin: [
-    { label: "Dashboard", href: "/admin" },
-   { label: "Courses", href: "/admin/courses" },
-    { label: "Users", href: "/admin/users", soon: true },
-    { label: "Enrolments", href: "/admin/enrolments", soon: true },
+    { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Courses", href: "/admin/courses", icon: BookOpen },
+    { label: "Users", href: "/admin/users", icon: Users, soon: true },
+    {
+      label: "Enrolments",
+      href: "/admin/enrolments",
+      icon: ClipboardList,
+      soon: true,
+    },
   ],
   teacher: [
-    { label: "Dashboard", href: "/teacher" },
-    { label: "Materials", href: "/teacher/materials", soon: true },
-    { label: "Question bank", href: "/teacher/questions", soon: true },
-    { label: "Question papers", href: "/teacher/papers", soon: true },
-    { label: "Assessments", href: "/teacher/assessments", soon: true },
-    { label: "Marking", href: "/teacher/marking", soon: true },
+    { label: "Dashboard", href: "/teacher", icon: LayoutDashboard },
+    {
+      label: "Materials",
+      href: "/teacher/materials",
+      icon: FileText,
+      soon: true,
+    },
+    {
+      label: "Question bank",
+      href: "/teacher/questions",
+      icon: Library,
+      soon: true,
+    },
+    {
+      label: "Question papers",
+      href: "/teacher/papers",
+      icon: ClipboardList,
+      soon: true,
+    },
+    {
+      label: "Assessments",
+      href: "/teacher/assessments",
+      icon: Timer,
+      soon: true,
+    },
+    {
+      label: "Marking",
+      href: "/teacher/marking",
+      icon: ClipboardCheck,
+      soon: true,
+    },
   ],
   student: [
-    { label: "Dashboard", href: "/student" },
-    { label: "Practice", href: "/student/practice", soon: true },
-    { label: "Exams", href: "/student/exams", soon: true },
-    { label: "Feedback", href: "/student/feedback", soon: true },
-    { label: "Progress", href: "/student/progress", soon: true },
+    { label: "Dashboard", href: "/student", icon: LayoutDashboard },
+    { label: "Practice", href: "/student/practice", icon: Pencil, soon: true },
+    { label: "Exams", href: "/student/exams", icon: Timer, soon: true },
+    {
+      label: "Feedback",
+      href: "/student/feedback",
+      icon: MessageSquare,
+      soon: true,
+    },
+    {
+      label: "Progress",
+      href: "/student/progress",
+      icon: TrendingUp,
+      soon: true,
+    },
   ],
 };

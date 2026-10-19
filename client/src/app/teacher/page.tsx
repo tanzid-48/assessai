@@ -1,13 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BookOpen, GraduationCap } from "lucide-react";
 import RoleGuard from "@/components/RoleGuard";
+import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
+import CourseCard from "@/components/CourseCard";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
-import { gradientFor, prefixFor } from "@/lib/courseStyle";
 
 type Course = { _id: string; code: string; title: string; credits: number };
+
+// The teacher's workflow, shown as a vertical guide on the right
+const STEPS = [
+  { title: "Upload materials", text: "Add slides and notes to each course." },
+  {
+    title: "Generate questions",
+    text: "AI drafts questions with source references.",
+  },
+  {
+    title: "Review and approve",
+    text: "Edit questions and build the question bank.",
+  },
+  { title: "Run assessments", text: "Timed exams with integrity checks." },
+  {
+    title: "Moderate marks",
+    text: "AI marks are published only after you approve.",
+  },
+];
 
 function TeacherHome() {
   const { data: session } = authClient.useSession();
@@ -25,113 +45,113 @@ function TeacherHome() {
       .finally(() => setLoading(false));
   }, []);
 
-  const firstName = session?.user.name.split(" ")[0] ?? "";
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const today = new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0);
 
   return (
     <>
-      {/* Welcome banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-6 text-white shadow-lg shadow-indigo-600/20 md:p-8">
-        <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-        <p className="relative text-sm text-white/80">Teacher dashboard</p>
-        <h2 className="relative mt-1 text-2xl font-bold md:text-3xl">
-          Welcome back{firstName ? `, ${firstName}` : ""}
-        </h2>
-        <p className="relative mt-2 max-w-xl text-sm text-white/80">
-          Upload course materials, generate questions and moderate marks for
-          your courses.
-        </p>
-      </div>
+      <PageHeader
+        title={`${greeting}, ${session?.user.name ?? ""}`}
+        description={today}
+      />
 
-      {/* Stats */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatCard
-          label="My courses"
-          value={courses.length}
-          gradient="from-indigo-500 to-violet-500"
-          icon="📚"
-        />
-        <StatCard
-          label="Total credits"
-          value={totalCredits}
-          gradient="from-emerald-500 to-teal-500"
-          icon="🎓"
-        />
-      </div>
-
-      {error && (
-        <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
-          {error}
-        </div>
-      )}
-
-      {/* My courses */}
-      <h3 className="mt-8 text-lg font-semibold">My courses</h3>
-
-      <div className="mt-4">
-        {loading ? (
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-40 animate-pulse rounded-2xl bg-neutral-200 dark:bg-neutral-800"
-              />
-            ))}
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        {/* Left: stats and courses */}
+        <div className="space-y-6 lg:col-span-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatCard
+              label="My courses"
+              value={courses.length}
+              icon={BookOpen}
+            />
+            <StatCard
+              label="Total credits"
+              value={totalCredits}
+              icon={GraduationCap}
+            />
           </div>
-        ) : courses.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-neutral-300 p-10 text-center dark:border-neutral-700">
-            <p className="text-3xl">📭</p>
-            <p className="mt-2 font-medium">No courses assigned yet</p>
-            <p className="mt-1 text-sm text-neutral-500">
-              The admin will assign courses to you. They will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {courses.map((c) => {
-              const gradient = gradientFor(c.code);
-              return (
-                <div
-                  key={c._id}
-                  className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-900"
-                >
-                  <div
-                    className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`}
-                  />
 
-                  <div className="flex items-start gap-4">
+          {error && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+              {error}
+            </div>
+          )}
+
+          <section>
+            <h2 className="text-sm font-semibold">My courses</h2>
+
+            <div className="mt-3">
+              {loading ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {[0, 1].map((i) => (
                     <div
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-bold text-white ${gradient}`}
-                    >
-                      {prefixFor(c.code)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                        {c.code}
-                      </p>
-                      <p className="mt-0.5 font-semibold leading-snug">
-                        {c.title}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-4 text-xs dark:border-neutral-800">
-                    <span className="rounded-full bg-neutral-100 px-2.5 py-1 font-medium dark:bg-neutral-800">
-                      {c.credits} credits
-                    </span>
-                    {/* Becomes a real link when the materials page is built */}
-                    <span className="flex items-center gap-2 text-neutral-400 dark:text-neutral-600">
-                      Materials
-                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide dark:bg-neutral-800">
-                        Soon
-                      </span>
-                    </span>
-                  </div>
+                      key={i}
+                      className="h-20 animate-pulse rounded-xl bg-neutral-200 dark:bg-neutral-800"
+                    />
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              ) : courses.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-neutral-300 px-6 py-12 text-center dark:border-neutral-700">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800">
+                    <BookOpen size={18} />
+                  </div>
+                  <p className="mt-3 text-sm font-medium">
+                    No courses assigned yet
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Courses assigned by the admin will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {courses.map((c) => (
+                    <CourseCard
+                      key={c._id}
+                      code={c.code}
+                      title={c.title}
+                      credits={c.credits}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* Right: workflow guide */}
+        <aside className="self-start rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="text-sm font-semibold">Your workflow</h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            From course material to published marks.
+          </p>
+
+          <ol className="mt-5">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                    {i + 1}
+                  </span>
+                  {i < STEPS.length - 1 && (
+                    <span className="mt-1 w-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
+                  )}
+                </div>
+                <div className={i < STEPS.length - 1 ? "pb-5" : ""}>
+                  <p className="text-sm font-medium">{s.title}</p>
+                  <p className="mt-0.5 text-xs text-neutral-500">{s.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </aside>
       </div>
     </>
   );

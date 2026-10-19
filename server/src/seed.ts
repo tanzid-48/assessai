@@ -10,6 +10,31 @@ const USERS = [
   { name: "Student One", email: "student@pub.edu", role: "student" },
 ];
 
+// Sample courses from the CSE department course list.
+// assigned: true gives the course to Teacher One.
+const COURSES = [
+  {
+    code: "CSE 4205",
+    title: "Digital Image Processing",
+    credits: 3,
+    assigned: true,
+  },
+  {
+    code: "CSE 4105",
+    title: "Artificial Intelligence",
+    credits: 3,
+    assigned: true,
+  },
+  { code: "CSE 4203", title: "Machine Learning", credits: 3, assigned: false },
+  {
+    code: "CSE 2103",
+    title: "Database Management System",
+    credits: 3,
+    assigned: false,
+  },
+  { code: "CSE 3103", title: "Operating Systems", credits: 3, assigned: false },
+];
+
 async function main() {
   await client.connect();
 
@@ -28,6 +53,25 @@ async function main() {
     await db
       .collection("user")
       .updateOne({ email: u.email }, { $set: { role: u.role } });
+  }
+
+  // Create the sample courses. Running the seed again never duplicates them.
+  const teacher = await db
+    .collection("user")
+    .findOne({ email: "teacher@pub.edu" });
+  const courses = db.collection("courses");
+
+  for (const c of COURSES) {
+    const base = { title: c.title, credits: c.credits, createdAt: new Date() };
+
+    await courses.updateOne(
+      { code: c.code },
+      c.assigned && teacher
+        ? { $set: { teacherId: teacher._id }, $setOnInsert: base }
+        : { $setOnInsert: { ...base, teacherId: null } },
+      { upsert: true },
+    );
+    console.log(`Course ${c.code} ready`);
   }
 
   console.log("Seed finished");
