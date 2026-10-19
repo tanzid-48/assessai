@@ -7,6 +7,7 @@ import { auth } from "./auth";
 import { requireAuth, requireRole } from "./middleware";
 import { coursesRouter } from "./courses";
 import { usersRouter } from "./users";
+import { enrollmentsRouter, ensureEnrollmentIndexes } from "./enrollments";
 
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
@@ -57,6 +58,7 @@ app.get("/api/admin/ping", requireRole("admin"), (_req, res) => {
 // Feature routers will be mounted here later, one file per feature:
 app.use("/api/courses", coursesRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/enrollments", enrollmentsRouter);
 // app.use("/api/questions", questionsRouter);
 // app.use("/api/exams", examsRouter);
 
@@ -82,7 +84,7 @@ app.use(
 
 async function main() {
   await connectDB();
-
+  await ensureEnrollmentIndexes();
   app.listen(PORT, () => {
     console.log(`AssessAI server running on http://localhost:${PORT}`);
   });
