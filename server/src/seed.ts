@@ -33,6 +33,12 @@ const COURSES = [
     assigned: false,
   },
   { code: "CSE 3103", title: "Operating Systems", credits: 3, assigned: false },
+  {
+    code: "CSE 4123",
+    title: "Simulation and Modeling",
+    credits: 3,
+    assigned: true,
+  },
 ];
 
 async function main() {

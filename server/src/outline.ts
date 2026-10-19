@@ -16,7 +16,7 @@ const topicSchema = z.object({ name: z.string().trim().min(2).max(100) });
 
 // Loads the course and checks that the user may manage it:
 // admins can manage every course, a teacher only the courses assigned to them.
-async function loadCourse(
+export async function loadCourse(
   courseIdParam: string,
   user: { id: string; role?: string },
 ) {
