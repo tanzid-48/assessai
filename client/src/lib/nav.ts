@@ -32,7 +32,6 @@ export const NAV: Record<Role, NavItem[]> = {
       label: "Enrolments",
       href: "/admin/enrolments",
       icon: ClipboardList,
-      soon: true,
     },
   ],
   teacher: [
