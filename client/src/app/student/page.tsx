@@ -1,9 +1,176 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { BookOpen, GraduationCap } from "lucide-react";
 import RoleGuard from "@/components/RoleGuard";
+import PageHeader from "@/components/PageHeader";
+import StatCard from "@/components/StatCard";
+import CourseCard from "@/components/CourseCard";
+import { authClient } from "@/lib/auth-client";
+import { api } from "@/lib/api";
+
+type Course = {
+  _id: string;
+  code: string;
+  title: string;
+  credits: number;
+  teacherName?: string | null;
+};
+
+// What a student can do on the platform, shown as a guide on the right
+const STEPS = [
+  {
+    title: "Practice",
+    text: "Try questions on your course topics at any time.",
+  },
+  { title: "Take exams", text: "Timed assessments set by your teacher." },
+  {
+    title: "Get feedback",
+    text: "Explanations based on your course material.",
+  },
+  { title: "Track progress", text: "See how you are doing topic by topic." },
+];
+
+function StudentHome() {
+  const { data: session } = authClient.useSession();
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // The server returns only the courses this student is enrolled in
+  useEffect(() => {
+    api<{ courses: Course[] }>("/api/enrollments/mine")
+      .then((d) => setCourses(d.courses))
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load courses"),
+      )
+      .finally(() => setLoading(false));
+  }, []);
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const today = new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0);
+
+  return (
+    <>
+      <PageHeader
+        title={`${greeting}, ${session?.user.name ?? ""}`}
+        description={today}
+      />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        {/* Left: stats and courses */}
+        <div className="space-y-6 lg:col-span-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatCard
+              label="Enrolled courses"
+              value={courses.length}
+              icon={BookOpen}
+            />
+            <StatCard
+              label="Total credits"
+              value={totalCredits}
+              icon={GraduationCap}
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+              {error}
+            </div>
+          )}
+
+          <section>
+            <h2 className="text-sm font-semibold">My courses</h2>
+
+            <div className="mt-3">
+              {loading ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {[0, 1].map((i) => (
+                    <div
+                      key={i}
+                      className="h-20 animate-pulse rounded-xl bg-neutral-200 dark:bg-neutral-800"
+                    />
+                  ))}
+                </div>
+              ) : courses.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-neutral-300 px-6 py-12 text-center dark:border-neutral-700">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800">
+                    <BookOpen size={18} />
+                  </div>
+                  <p className="mt-3 text-sm font-medium">
+                    You are not enrolled in any course yet
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    The department will enrol you. Your courses will appear
+                    here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {courses.map((c) => (
+                    <CourseCard
+                      key={c._id}
+                      code={c.code}
+                      title={c.title}
+                      credits={c.credits}
+                    >
+                      <p className="text-xs text-neutral-500">
+                        Teacher:{" "}
+                        <span className="text-neutral-700 dark:text-neutral-300">
+                          {c.teacherName ?? "Not assigned yet"}
+                        </span>
+                      </p>
+                    </CourseCard>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* Right: what is coming */}
+        <aside className="self-start rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <h2 className="text-sm font-semibold">How it works</h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            Learn, practise and get feedback.
+          </p>
+
+          <ol className="mt-5">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                    {i + 1}
+                  </span>
+                  {i < STEPS.length - 1 && (
+                    <span className="mt-1 w-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
+                  )}
+                </div>
+                <div className={i < STEPS.length - 1 ? "pb-5" : ""}>
+                  <p className="text-sm font-medium">{s.title}</p>
+                  <p className="mt-0.5 text-xs text-neutral-500">{s.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </aside>
+      </div>
+    </>
+  );
+}
 
 export default function StudentPage() {
   return (
     <RoleGuard role="student">
-      <h2 className="text-xl font-semibold">Student dashboard</h2>
+      <StudentHome />
     </RoleGuard>
   );
 }
