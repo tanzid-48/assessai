@@ -286,3 +286,44 @@ materialsRouter.get(
     res.json({ count: list.length, chunks: list });
   },
 );
+// Streams the original PDF so the teacher can open it in a browser tab
+materialsRouter.get(
+  "/:courseId/materials/:materialId/file",
+  requireRole("admin", "teacher"),
+  courseAccess,
+  async (req, res) => {
+    const course = res.locals.course;
+    const materialId = String(req.params.materialId);
+    if (!ObjectId.isValid(materialId)) {
+      return res.status(400).json({ error: "Invalid material id" });
+    }
+
+    const material = await materials().findOne({
+      _id: new ObjectId(materialId),
+      courseId: course._id,
+    });
+    if (!material) {
+      return res.status(404).json({ error: "Material not found" });
+    }
+
+    // The path is built from ids and the random stored name, never from user input
+    const filePath = path.join(
+      UPLOAD_ROOT,
+      String(course._id),
+      String(material.storedName),
+    );
+    if (!fs.existsSync(filePath)) {
+      return res
+        .status(404)
+        .json({ error: "The file is missing on the server" });
+    }
+
+    // Show the PDF inside the tab, with its original name
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename*=UTF-8''${encodeURIComponent(String(material.originalName))}`,
+    );
+    res.sendFile(filePath);
+  },
+);

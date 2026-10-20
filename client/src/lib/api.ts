@@ -6,10 +6,16 @@ export async function api<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  // For file uploads the browser must set the Content-Type itself (it adds the multipart boundary)
+  const isForm =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: isForm
+      ? options.headers
+      : { "Content-Type": "application/json", ...(options.headers || {}) },
   });
 
   const data = await res.json().catch(() => ({}));

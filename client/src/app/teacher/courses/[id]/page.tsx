@@ -4,12 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import RoleGuard from "@/components/RoleGuard";
 import PageHeader from "@/components/PageHeader";
 import ConfirmDialog from "@/components/ConfirmDialog";
-
+import MaterialsPanel from "@/components/MaterialsPanel";
 import { api } from "@/lib/api";
-import { toast } from "sonner";
 
 type Clo = { _id: string; code: string; text: string };
 type Topic = { _id: string; name: string };
@@ -330,6 +330,11 @@ function CourseOutline() {
             )
           }
         />
+      </div>
+
+      {/* Materials: PDF upload, list and delete */}
+      <div className="mt-6">
+        <MaterialsPanel courseId={outline.course._id} topics={outline.topics} />
       </div>
     </>
   );
