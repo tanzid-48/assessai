@@ -13,6 +13,7 @@ import { getDB } from "./db";
 import { requireRole } from "./middleware";
 import { loadCourse } from "./outline";
 import { chunkPages, extractPdfPages, type PageText } from "./extract";
+import { indexMaterial } from "./rag";
 
 // Course materials (slides, notes) uploaded by teachers
 export const materialsRouter = Router();
@@ -120,6 +121,8 @@ materialsRouter.get(
         type: String(m.ext).slice(1),
         size: m.size,
         pages: m.pageCount ?? null,
+        chunks: m.chunkCount ?? null,
+        indexStatus: m.indexStatus ?? "pending",
         topicId: m.topicId ? String(m.topicId) : null,
         topicName: m.topicId
           ? (topicName.get(String(m.topicId)) ?? null)
@@ -202,6 +205,8 @@ materialsRouter.post(
         ext,
         size: file.size,
         pageCount: pageList.length,
+        chunkCount: pieces.length,
+        indexStatus: "pending",
         uploadedBy: new ObjectId(res.locals.user.id),
         createdAt: new Date(),
       });
@@ -225,10 +230,15 @@ materialsRouter.post(
         throw err;
       }
 
+      // Give every chunk an embedding so the AI can find the right part later.
+      // A failure here keeps the upload; the teacher can retry with the /index route.
+      const index = await indexMaterial(inserted.insertedId);
+
       res.status(201).json({
         id: inserted.insertedId,
         pages: pageList.length,
         chunks: pieces.length,
+        index: index.status,
       });
     } catch (err) {
       // Do not leave a file on disk that has no database record
@@ -265,6 +275,7 @@ materialsRouter.delete(
     res.json({ ok: true });
   },
 );
+
 // Shows the chunks of one material, so the teacher can check what was read from the file
 materialsRouter.get(
   "/:courseId/materials/:materialId/chunks",
@@ -277,6 +288,7 @@ materialsRouter.get(
       return res.status(400).json({ error: "Invalid material id" });
     }
 
+    // The vectors are left out on purpose, they are long and not meant to be read
     const list = await chunks()
       .find({ courseId: course._id, materialId: new ObjectId(materialId) })
       .sort({ index: 1 })
@@ -286,6 +298,7 @@ materialsRouter.get(
     res.json({ count: list.length, chunks: list });
   },
 );
+
 // Streams the original PDF so the teacher can open it in a browser tab
 materialsRouter.get(
   "/:courseId/materials/:materialId/file",
@@ -325,5 +338,37 @@ materialsRouter.get(
       `inline; filename*=UTF-8''${encodeURIComponent(String(material.originalName))}`,
     );
     res.sendFile(filePath);
+  },
+);
+
+// Builds (or rebuilds) the embeddings of one material.
+// Safe to run again: chunks that are already done are skipped.
+materialsRouter.post(
+  "/:courseId/materials/:materialId/index",
+  requireRole("admin", "teacher"),
+  courseAccess,
+  async (req, res) => {
+    const course = res.locals.course;
+    const materialId = String(req.params.materialId);
+    if (!ObjectId.isValid(materialId)) {
+      return res.status(400).json({ error: "Invalid material id" });
+    }
+
+    const material = await materials().findOne({
+      _id: new ObjectId(materialId),
+      courseId: course._id,
+    });
+    if (!material) {
+      return res.status(404).json({ error: "Material not found" });
+    }
+
+    const result = await indexMaterial(material._id);
+    if (result.status === "failed") {
+      return res.status(502).json({
+        error:
+          "The AI service did not respond or its limit was reached. Please try again in a minute.",
+      });
+    }
+    res.json(result);
   },
 );
