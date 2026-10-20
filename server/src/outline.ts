@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document, type WithId } from "mongodb";
 import { getDB } from "./db";
 import { requireRole } from "./middleware";
 
@@ -14,24 +14,29 @@ const topics = () => getDB().collection("topics");
 const cloSchema = z.object({ text: z.string().trim().min(5).max(300) });
 const topicSchema = z.object({ name: z.string().trim().min(2).max(100) });
 
+// The result of loadCourse: either the course, or the status and message to answer with
+type CourseLookup =
+  | { course: WithId<Document> }
+  | { status: number; error: string };
+
 // Loads the course and checks that the user may manage it:
 // admins can manage every course, a teacher only the courses assigned to them.
 export async function loadCourse(
   courseIdParam: string,
   user: { id: string; role?: string },
-) {
+): Promise<CourseLookup> {
   if (!ObjectId.isValid(courseIdParam)) {
-    return { status: 400, error: "Invalid course id" } as const;
+    return { status: 400, error: "Invalid course id" };
   }
   const course = await courses().findOne({ _id: new ObjectId(courseIdParam) });
   if (!course) {
-    return { status: 404, error: "Course not found" } as const;
+    return { status: 404, error: "Course not found" };
   }
   const isOwner = course.teacherId && String(course.teacherId) === user.id;
   if (user.role !== "admin" && !isOwner) {
-    return { status: 403, error: "This is not your course" } as const;
+    return { status: 403, error: "This is not your course" };
   }
-  return { course } as const;
+  return { course };
 }
 
 // Everything about one course: its CLOs and its topics

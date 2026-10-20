@@ -12,12 +12,14 @@ import path from "node:path";
 import { getDB } from "./db";
 import { requireRole } from "./middleware";
 import { loadCourse } from "./outline";
+import { chunkPages, extractPdfPages, type PageText } from "./extract";
 
 // Course materials (slides, notes) uploaded by teachers
 export const materialsRouter = Router();
 
 const materials = () => getDB().collection("materials");
 const topics = () => getDB().collection("topics");
+const chunks = () => getDB().collection("chunks");
 
 // Files are stored on the server disk, one folder per course
 const UPLOAD_ROOT = path.resolve("uploads");
@@ -117,6 +119,7 @@ materialsRouter.get(
         name: m.originalName,
         type: String(m.ext).slice(1),
         size: m.size,
+        pages: m.pageCount ?? null,
         topicId: m.topicId ? String(m.topicId) : null,
         topicName: m.topicId
           ? (topicName.get(String(m.topicId)) ?? null)
@@ -150,6 +153,13 @@ materialsRouter.post(
     if (!hasValidSignature(file.path, ext)) {
       return reject(400, "This file is not a real PDF or PPTX");
     }
+    // PPTX text extraction is added in a later step
+    if (ext !== ".pdf") {
+      return reject(
+        400,
+        "PPTX reading is not ready yet. Please upload a PDF for now",
+      );
+    }
 
     // The topic is optional, but if given it must belong to this course
     let topicId: ObjectId | null = null;
@@ -166,17 +176,60 @@ materialsRouter.post(
     }
 
     try {
+      // Read the PDF first, so a broken or empty file is rejected before anything is saved
+      let pageList: PageText[];
+      try {
+        pageList = await extractPdfPages(file.path);
+      } catch (err) {
+        console.error("PDF extraction failed:", err);
+        return reject(400, "This PDF could not be read");
+      }
+
+      const pieces = chunkPages(pageList);
+      if (pieces.length === 0) {
+        return reject(
+          400,
+          "No readable text found in this PDF. Scanned PDFs are not supported yet, upload a PDF with selectable text",
+        );
+      }
+
+      const fileName = realName(file.originalname);
       const inserted = await materials().insertOne({
         courseId: course._id,
         topicId,
-        originalName: realName(file.originalname),
+        originalName: fileName,
         storedName: file.filename,
         ext,
         size: file.size,
+        pageCount: pageList.length,
         uploadedBy: new ObjectId(res.locals.user.id),
         createdAt: new Date(),
       });
-      res.status(201).json({ id: inserted.insertedId });
+
+      // Save the chunks. Each one remembers the file, the page and the topic it came from.
+      try {
+        await chunks().insertMany(
+          pieces.map((c) => ({
+            courseId: course._id,
+            materialId: inserted.insertedId,
+            topicId,
+            fileName,
+            page: c.page,
+            index: c.index,
+            text: c.text,
+          })),
+        );
+      } catch (err) {
+        // Never keep a material without its chunks
+        await materials().deleteOne({ _id: inserted.insertedId });
+        throw err;
+      }
+
+      res.status(201).json({
+        id: inserted.insertedId,
+        pages: pageList.length,
+        chunks: pieces.length,
+      });
     } catch (err) {
       // Do not leave a file on disk that has no database record
       fs.rmSync(file.path, { force: true });
@@ -185,7 +238,7 @@ materialsRouter.post(
   },
 );
 
-// Delete a material and its file
+// Delete a material, its chunks and its file
 materialsRouter.delete(
   "/:courseId/materials/:materialId",
   requireRole("admin", "teacher"),
@@ -205,10 +258,31 @@ materialsRouter.delete(
       return res.status(404).json({ error: "Material not found" });
     }
 
-    // Chunks of this material will be deleted here too, once they exist
+    await chunks().deleteMany({ materialId: material._id });
     fs.rmSync(path.join(UPLOAD_ROOT, String(course._id), material.storedName), {
       force: true,
     });
     res.json({ ok: true });
+  },
+);
+// Shows the chunks of one material, so the teacher can check what was read from the file
+materialsRouter.get(
+  "/:courseId/materials/:materialId/chunks",
+  requireRole("admin", "teacher"),
+  courseAccess,
+  async (req, res) => {
+    const course = res.locals.course;
+    const materialId = String(req.params.materialId);
+    if (!ObjectId.isValid(materialId)) {
+      return res.status(400).json({ error: "Invalid material id" });
+    }
+
+    const list = await chunks()
+      .find({ courseId: course._id, materialId: new ObjectId(materialId) })
+      .sort({ index: 1 })
+      .project({ page: 1, index: 1, text: 1 })
+      .toArray();
+
+    res.json({ count: list.length, chunks: list });
   },
 );
