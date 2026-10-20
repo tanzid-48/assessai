@@ -62,3 +62,53 @@ export async function indexMaterial(
     return { status: "failed", total, embedded };
   }
 }
+
+export type SearchHit = {
+  chunkId: string;
+  materialId: string;
+  fileName: string;
+  page: number;
+  index: number;
+  topicId: string | null;
+  score: number;
+  text: string;
+};
+
+// Both vectors have length 1, so their dot product equals the cosine similarity
+function dot(a: number[], b: number[]) {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+  return sum;
+}
+
+// Finds the chunks of one course whose meaning is closest to the query text.
+// A higher score means a closer match (1 is identical, around 0.5 or below is usually unrelated).
+export async function searchChunks(
+  courseId: ObjectId,
+  query: string,
+  options: { topicId?: ObjectId; limit?: number } = {},
+): Promise<SearchHit[]> {
+  const limit = Math.min(Math.max(options.limit ?? 5, 1), 10);
+  const [queryVector] = await embedTexts([query], "query");
+
+  // Only vectors made the same way as the query vector can be compared
+  const filter: Record<string, unknown> = { courseId, embedKey: EMBED_KEY };
+  if (options.topicId) filter.topicId = options.topicId;
+
+  const candidates = await chunks().find(filter).toArray();
+
+  return candidates
+    .map((c) => ({
+      chunkId: String(c._id),
+      materialId: String(c.materialId),
+      fileName: String(c.fileName),
+      page: Number(c.page),
+      index: Number(c.index),
+      topicId: c.topicId ? String(c.topicId) : null,
+      score:
+        Math.round(dot(queryVector, c.embedding as number[]) * 10000) / 10000,
+      text: String(c.text),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
