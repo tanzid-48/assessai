@@ -3,16 +3,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import RoleGuard from "@/components/RoleGuard";
 import PageHeader from "@/components/PageHeader";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import GeneratePanel from "@/components/GeneratePanel";
 import QuestionCard, { type Question } from "@/components/QuestionCard";
 import { api } from "@/lib/api";
 
 type Counts = { pending: number; approved: number; rejected: number };
 type Status = Question["status"];
+type Outline = {
+  course: { code: string; title: string };
+  clos: { _id: string; code: string; text: string }[];
+  topics: { _id: string; name: string }[];
+};
 
 const TABS: { key: Status; label: string }[] = [
   { key: "pending", label: "Pending" },
@@ -25,9 +31,7 @@ const selectClass =
 
 function QuestionBank() {
   const { id } = useParams<{ id: string }>();
-  const [course, setCourse] = useState<{ code: string; title: string } | null>(
-    null,
-  );
+  const [outline, setOutline] = useState<Outline | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [counts, setCounts] = useState<Counts>({
     pending: 0,
@@ -38,6 +42,9 @@ function QuestionBank() {
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showGenerate, setShowGenerate] = useState(false);
+  // Changing this number makes the list load again
+  const [refresh, setRefresh] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Question | null>(null);
 
@@ -61,14 +68,12 @@ function QuestionBank() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refresh]);
 
-  // The course name for the page header
+  // The course name, the topics and the CLOs are needed for the header and the generate form
   useEffect(() => {
-    api<{ course: { code: string; title: string } }>(
-      `/api/courses/${id}/outline`,
-    )
-      .then((d) => setCourse(d.course))
+    api<Outline>(`/api/courses/${id}/outline`)
+      .then(setOutline)
       .catch(() => {});
   }, [id]);
 
@@ -79,6 +84,15 @@ function QuestionBank() {
       ? questions.filter((x) => x.text.toLowerCase().includes(q))
       : questions;
   }, [questions, search]);
+
+  // New questions are always "pending" and the newest comes first, so show that list
+  function handleGenerated() {
+    setStatus("pending");
+    setType("");
+    setSearch("");
+    setLoading(true);
+    setRefresh((n) => n + 1);
+  }
 
   async function setQuestionStatus(q: Question, next: Status) {
     setBusyId(q._id);
@@ -134,8 +148,33 @@ function QuestionBank() {
 
       <PageHeader
         title="Question bank"
-        description={course ? `${course.code} · ${course.title}` : undefined}
+        description={
+          outline
+            ? `${outline.course.code} · ${outline.course.title}`
+            : undefined
+        }
+        action={
+          <button
+            onClick={() => setShowGenerate((v) => !v)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+          >
+            {showGenerate ? <X size={16} /> : <Sparkles size={16} />}
+            {showGenerate ? "Close" : "Generate questions"}
+          </button>
+        }
       />
+
+      {/* Generate form (hidden until the button is pressed) */}
+      {showGenerate && outline && (
+        <div className="mt-6">
+          <GeneratePanel
+            courseId={id}
+            topics={outline.topics}
+            clos={outline.clos}
+            onGenerated={handleGenerated}
+          />
+        </div>
+      )}
 
       {/* Status tabs */}
       <div className="mt-6 flex gap-1 overflow-x-auto border-b border-neutral-200 dark:border-neutral-800">
@@ -208,7 +247,7 @@ function QuestionBank() {
             </p>
             <p className="mt-1 text-sm text-neutral-500">
               {status === "pending" && !search
-                ? "Questions made by the AI wait here until you approve them."
+                ? 'Press "Generate questions" above. New questions wait here until you approve them.'
                 : "Questions you move here will appear in this list."}
             </p>
           </div>
