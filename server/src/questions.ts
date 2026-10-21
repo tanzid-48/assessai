@@ -20,6 +20,11 @@ const questionsCol = () => getDB().collection("questions");
 const MIN_SCORE = 0.55;
 // How many of the best matching chunks are used (each one together with the chunk before and after it)
 const TOP_HITS = 4;
+// A new question is dropped when its wording is this similar (0 to 1) to an existing one.
+// Raise it if too many good questions are skipped, lower it if repeats still get through.
+const SIMILARITY_LIMIT = 0.5;
+// How many existing questions of the topic are shown to the AI
+const EXISTING_LIMIT = 25;
 
 // What the teacher sends
 const generateSchema = z.object({
@@ -52,7 +57,80 @@ const aiQuestion = z.object({
   bloom: z.preprocess(lower, z.enum(BLOOM)),
   sources: z.array(z.number().int()).min(1).max(8),
 });
-const aiOutput = z.object({ questions: z.array(aiQuestion).min(1).max(10) });
+// The list may be empty when the AI finds nothing new to ask
+const aiOutput = z.object({ questions: z.array(aiQuestion).max(10) });
+
+// Words that say nothing about what a question asks
+const STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "the",
+  "of",
+  "in",
+  "on",
+  "for",
+  "to",
+  "with",
+  "by",
+  "as",
+  "at",
+  "is",
+  "are",
+  "be",
+  "its",
+  "their",
+  "each",
+  "both",
+  "those",
+  "these",
+  "that",
+  "this",
+  "within",
+  "along",
+  "using",
+  "used",
+  "from",
+  "into",
+  "than",
+  "then",
+  "also",
+  "how",
+  "what",
+  "which",
+  "do",
+  "does",
+  "can",
+  "will",
+]);
+
+// The meaningful words and numbers of a text, in lower case
+function contentWords(text: string) {
+  const words = text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+  return new Set(words.filter((w) => !STOP_WORDS.has(w)));
+}
+
+// True when two questions ask almost the same thing
+function isNearDuplicate(a: string, b: string) {
+  const wa = contentWords(a);
+  const wb = contentWords(b);
+
+  // Questions with different numbers are different calculations, even when the wording is the same
+  const numbersA = [...wa]
+    .filter((w) => /^\d+$/.test(w))
+    .sort()
+    .join(",");
+  const numbersB = [...wb]
+    .filter((w) => /^\d+$/.test(w))
+    .sort()
+    .join(",");
+  if (numbersA && numbersB && numbersA !== numbersB) return false;
+
+  let shared = 0;
+  for (const w of wa) if (wb.has(w)) shared++;
+  const union = wa.size + wb.size - shared;
+  return union > 0 && shared / union >= SIMILARITY_LIMIT;
+}
 
 // A piece of the materials that is shown to the AI
 type Excerpt = {
@@ -114,10 +192,18 @@ function buildPrompt(args: {
   count: number;
   difficulty?: string;
   excerpts: Excerpt[];
+  existing: string[];
 }) {
   const excerptText = args.excerpts
     .map((e, i) => `[${i + 1}] (${e.fileName}, page ${e.page})\n${e.text}`)
     .join("\n\n");
+
+  // Questions that were already written for this topic, so the AI does not repeat them
+  const existingText = args.existing.length
+    ? `\nQuestions that already exist for this topic. Do NOT repeat them or ask the same thing in different words. Ask about other facts from the excerpts:\n${args.existing
+        .map((t) => `- ${t.length > 200 ? `${t.slice(0, 200)}...` : t}`)
+        .join("\n")}\n`
+    : "";
 
   return `You write exam questions for a university course. Use ONLY the numbered excerpts below as the source of facts. Do not use outside knowledge.
 
@@ -140,11 +226,12 @@ Rules:
 - For a calculation, work it out carefully and show the result in "answer".
 - The excerpts come from a PDF, so some words may be joined together by a reading error (for example "expected value"). Write such words correctly in the questions and answers.
 - Write formulas in plain text such as E[X] = 1/λ and (a + b) / 2. Do not use LaTeX or dollar signs.
+- If the excerpts do not hold enough new facts for ${args.count} different questions, write fewer questions.
 - Write in English. Return only JSON.
 
 Return this JSON shape ("options" and "correctIndex" only for multiple choice):
 {"questions":[{"text":"...","options":["...","...","...","..."],"correctIndex":0,"answer":"...","difficulty":"easy","bloom":"remember","sources":[1]}]}
-
+${existingText}
 Excerpts:
 ${excerptText}`;
 }
@@ -204,7 +291,16 @@ questionsRouter.post(
         });
       }
 
-      // 2. Ask the AI for questions based on those parts only
+      // 2. The questions already written for this topic (any status), so they are not repeated
+      const existingDocs = await questionsCol()
+        .find({ courseId: course._id, topicId: topic._id })
+        .project({ text: 1 })
+        .sort({ createdAt: -1 })
+        .limit(EXISTING_LIMIT)
+        .toArray();
+      const existing = existingDocs.map((d) => String(d.text));
+
+      // 3. Ask the AI for new questions based on those parts only
       const excerpts = await loadExcerpts(course._id, hits);
       const { data, model } = await generateJson(
         buildPrompt({
@@ -216,16 +312,25 @@ questionsRouter.post(
           count,
           difficulty,
           excerpts,
+          existing,
         }),
         aiOutput,
       );
 
-      // 3. Keep only the questions that are complete and point to real excerpts
+      // 4. Keep only questions that are new, complete and point to real excerpts
       const valid: { q: z.infer<typeof aiQuestion>; refs: number[] }[] = [];
+      // Texts to compare with: the existing questions and the ones accepted in this batch
+      const known: string[] = [...existing];
       let dropped = 0;
+      let duplicates = 0;
 
       for (const q of data.questions) {
         if (valid.length >= count) break;
+
+        if (known.some((t) => isNearDuplicate(t, q.text))) {
+          duplicates++;
+          continue;
+        }
 
         const refs = [...new Set(q.sources)].filter(
           (n) => n >= 1 && n <= excerpts.length,
@@ -249,15 +354,24 @@ questionsRouter.post(
           }
         }
         valid.push({ q, refs });
+        known.push(q.text);
       }
 
       if (valid.length === 0) {
+        // Nothing new: the AI repeated itself, or found no other facts to ask about
+        if (duplicates > 0 || data.questions.length === 0) {
+          return res.status(422).json({
+            error:
+              "The AI could not find new questions on this topic that differ from the existing ones. Try another topic, CLO or question type.",
+            duplicates,
+          });
+        }
         return res.status(502).json({
           error: "The AI did not return usable questions. Please try again.",
         });
       }
 
-      // 4. Save them as "pending". The source reference is the file and the page of each excerpt.
+      // 5. Save them as "pending". The source reference is the file and the page of each excerpt.
       const docs = valid.map(({ q, refs }) => ({
         courseId: course._id,
         topicId: topic._id,
@@ -299,6 +413,7 @@ questionsRouter.post(
         model,
         topScore,
         dropped,
+        duplicates,
         questions: docs.map((d, i) => ({ _id: inserted.insertedIds[i], ...d })),
       });
     } catch (err) {

@@ -77,7 +77,7 @@ export default function GeneratePanel({
     setBusy(true);
 
     try {
-      const r = await api<{ questions: unknown[] }>(
+      const r = await api<{ questions: unknown[]; duplicates?: number }>(
         `/api/courses/${courseId}/questions/generate`,
         {
           method: "POST",
@@ -91,8 +91,13 @@ export default function GeneratePanel({
         },
       );
       const n = r.questions.length;
+      const skipped = r.duplicates ?? 0;
       toast.success(
-        `${n} question${n === 1 ? "" : "s"} generated. Review them before approving.`,
+        `${n} question${n === 1 ? "" : "s"} generated` +
+          (skipped > 0
+            ? ` (${skipped} skipped as too similar to existing ones)`
+            : "") +
+          ". Review them before approving.",
       );
       onGenerated();
     } catch (err) {
