@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import RoleGuard from "@/components/RoleGuard";
 import PageHeader from "@/components/PageHeader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import MaterialsPanel from "@/components/MaterialsPanel";
 import { api } from "@/lib/api";
+import { ArrowLeft, Library, Plus, Trash2 } from "lucide-react";
 
 type Clo = { _id: string; code: string; text: string };
 type Topic = { _id: string; name: string };
@@ -264,6 +264,15 @@ function CourseOutline() {
       <PageHeader
         title={outline.course.title}
         description={outline.course.code}
+        action={
+          <Link
+            href={`/teacher/courses/${id}/questions`}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+          >
+            <Library size={16} />
+            Question bank
+          </Link>
+        }
       />
 
       <div className="mt-4 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">

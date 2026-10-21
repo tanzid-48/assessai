@@ -138,7 +138,8 @@ Rules:
 - "difficulty" is easy, medium or hard. "bloom" is one of: remember, understand, apply, analyze, evaluate, create.
 - "sources" lists the numbers of the excerpts that support the question and its answer, for example [2, 3].
 - For a calculation, work it out carefully and show the result in "answer".
-- The excerpts come from a PDF, so some words may be joined together by a reading error (for example "expectedvalue"). Write such words correctly in the questions and answers.
+- The excerpts come from a PDF, so some words may be joined together by a reading error (for example "expected value"). Write such words correctly in the questions and answers.
+- Write formulas in plain text such as E[X] = 1/λ and (a + b) / 2. Do not use LaTeX or dollar signs.
 - Write in English. Return only JSON.
 
 Return this JSON shape ("options" and "correctIndex" only for multiple choice):
@@ -269,15 +270,23 @@ questionsRouter.post(
         answer: q.answer,
         difficulty: difficulty ?? q.difficulty,
         bloom: q.bloom,
-        sources: refs.map((n) => {
-          const e = excerpts[n - 1];
-          return {
-            chunkId: e.chunkId,
-            materialId: e.materialId,
-            fileName: e.fileName,
-            page: e.page,
-          };
-        }),
+        // The same file and page is listed only once, even if two excerpts came from it
+        sources: [
+          ...new Map(
+            refs.map((n) => {
+              const e = excerpts[n - 1];
+              return [
+                `${e.materialId}:${e.page}`,
+                {
+                  chunkId: e.chunkId,
+                  materialId: e.materialId,
+                  fileName: e.fileName,
+                  page: e.page,
+                },
+              ] as const;
+            }),
+          ).values(),
+        ],
         status: "pending",
         generatedBy: model,
         createdBy: new ObjectId(res.locals.user.id),
