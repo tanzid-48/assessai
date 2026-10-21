@@ -11,7 +11,8 @@ import { enrollmentsRouter, ensureEnrollmentIndexes } from "./enrollments";
 import { outlineRouter } from "./outline";
 import { materialsRouter } from "./materials";
 import { searchRouter } from "./search";
-
+import { questionsRouter } from "./questions";
+import { questionBankRouter } from "./questionBank";
 
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
@@ -59,16 +60,16 @@ app.get("/api/admin/ping", requireRole("admin"), (_req, res) => {
   res.json({ ok: true, message: "Hello admin" });
 });
 
-// Feature routers will be mounted here later, one file per feature:
+// Feature routers, one file per feature.
+// They must all be mounted BEFORE the "not found" fallback below.
 app.use("/api/courses", coursesRouter);
 app.use("/api/courses", outlineRouter);
 app.use("/api/courses", materialsRouter);
 app.use("/api/courses", searchRouter);
+app.use("/api/courses", questionsRouter);
+app.use("/api/courses", questionBankRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/enrollments", enrollmentsRouter);
-
-// app.use("/api/questions", questionsRouter);
-// app.use("/api/exams", examsRouter);
 
 // --------------------------------
 

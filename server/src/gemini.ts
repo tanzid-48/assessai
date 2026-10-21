@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import type { ZodType } from "zod";
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -13,6 +14,15 @@ export const EMBED_MODEL =
   process.env.GEMINI_EMBED_MODEL ?? "gemini-embedding-001";
 export const EMBED_DIMENSIONS =
   Number(process.env.GEMINI_EMBED_DIMENSIONS) || 768;
+
+// Text models to try, in order (comma separated in .env)
+const TEXT_MODELS = (
+  process.env.GEMINI_MODELS ??
+  "gemini-3.8-flash,gemini-flash-latest,gemini-3.1-flash-lite"
+)
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
 
 // Describes how a vector was made. Vectors made in different ways must never be compared.
 export const EMBED_KEY = `${EMBED_MODEL}:${EMBED_DIMENSIONS}`;
@@ -85,4 +95,46 @@ export async function embedTexts(
     throw new Error("Received a vector of an unexpected size");
   }
   return vectors.map(normalize);
+}
+
+// Asks Gemini for a JSON answer and checks it against a Zod schema.
+// If a model fails (limit reached, busy, or an answer in the wrong format), the next model is tried.
+export async function generateJson<T>(
+  prompt: string,
+  schema: ZodType<T>,
+): Promise<{ data: T; model: string }> {
+  let lastError: unknown = new Error("No Gemini text model is configured");
+
+  for (const model of TEXT_MODELS) {
+    try {
+      const res = await withRetry(`Generation (${model})`, () =>
+        ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: { responseMimeType: "application/json", temperature: 0.4 },
+        }),
+      );
+
+      // Some models wrap the JSON in a code fence, so remove it first
+      const raw = (res.text ?? "")
+        .trim()
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "");
+
+      const parsed = schema.safeParse(JSON.parse(raw));
+      if (!parsed.success) {
+        throw new Error(
+          `The answer did not match the expected format: ${parsed.error.issues[0]?.message ?? "unknown problem"}`,
+        );
+      }
+      return { data: parsed.data, model };
+    } catch (err) {
+      lastError = err;
+      console.warn(
+        `Model ${model} failed:`,
+        err instanceof Error ? err.message.slice(0, 200) : err,
+      );
+    }
+  }
+  throw lastError;
 }
