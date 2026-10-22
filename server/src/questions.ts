@@ -226,6 +226,7 @@ Rules:
 - For a calculation, work it out carefully and show the result in "answer".
 - The excerpts come from a PDF, so some words may be joined together by a reading error (for example "expected value"). Write such words correctly in the questions and answers.
 - Write formulas in plain text such as E[X] = 1/λ and (a + b) / 2. Do not use LaTeX or dollar signs.
+- Every question must stand alone on a printed exam paper. Never write phrases such as "according to the notes", "as presented in the study notes" or "in the text" inside a question.
 - If the excerpts do not hold enough new facts for ${args.count} different questions, write fewer questions.
 - Write in English. Return only JSON.
 

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import RoleGuard from "@/components/RoleGuard";
 import PageHeader from "@/components/PageHeader";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import EditQuestionDialog from "@/components/EditQuestionDialog";
 import GeneratePanel from "@/components/GeneratePanel";
 import QuestionCard, { type Question } from "@/components/QuestionCard";
 import { api } from "@/lib/api";
@@ -47,6 +48,8 @@ function QuestionBank() {
   const [refresh, setRefresh] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Question | null>(null);
+  // The question that is open in the edit dialog
+  const [editing, setEditing] = useState<Question | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -70,7 +73,7 @@ function QuestionBank() {
     load();
   }, [load, refresh]);
 
-  // The course name, the topics and the CLOs are needed for the header and the generate form
+  // The course name, the topics and the CLOs are needed for the header, the generate form and the edit dialog
   useEffect(() => {
     api<Outline>(`/api/courses/${id}/outline`)
       .then(setOutline)
@@ -258,12 +261,24 @@ function QuestionBank() {
               question={q}
               busy={busyId === q._id}
               onStatus={(next) => setQuestionStatus(q, next)}
-              onEdit={() => toast.info("Editing comes in the next step")}
+              onEdit={() => setEditing(q)}
               onDelete={() => setToDelete(q)}
             />
           ))
         )}
       </div>
+
+      <EditQuestionDialog
+        question={editing}
+        courseId={id}
+        clos={outline?.clos ?? []}
+        topics={outline?.topics ?? []}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null);
+          load();
+        }}
+      />
 
       <ConfirmDialog
         open={toDelete !== null}
