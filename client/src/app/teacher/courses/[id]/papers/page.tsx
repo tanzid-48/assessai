@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ChevronRight,
@@ -331,30 +331,42 @@ function NewPaperForm({ courseId, onCreated }: FormProps) {
 
 function Papers() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [course, setCourse] = useState<{ code: string; title: string } | null>(
     null,
   );
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  // Changing this number makes the list load again
+  const [refresh, setRefresh] = useState(0);
   // The paper waiting for confirmation, and the row being deleted right now
   const [toDelete, setToDelete] = useState<Paper | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await api<{ papers: Paper[] }>(`/api/courses/${id}/papers`);
-      setPapers(data.papers);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not load the papers");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
+  // Load the papers when the page opens and every time "refresh" changes.
+  // State is set after the answer arrives, never directly inside the effect.
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+
+    api<{ papers: Paper[] }>(`/api/courses/${id}/papers`)
+      .then((d) => {
+        if (!cancelled) setPapers(d.papers);
+      })
+      .catch((e) => {
+        if (!cancelled)
+          toast.error(
+            e instanceof Error ? e.message : "Could not load the papers",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, refresh]);
 
   // The course name for the page header
   useEffect(() => {
@@ -372,8 +384,10 @@ function Papers() {
     setLeavingId(paper._id);
     try {
       await api(`/api/courses/${id}/papers/${paper._id}`, { method: "DELETE" });
+      // Remove the row at once, then load the list again to stay in step with the server
+      setPapers((list) => list.filter((p) => p._id !== paper._id));
+      setRefresh((n) => n + 1);
       toast.success("Paper deleted");
-      await load();
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "Could not delete the paper",
@@ -414,7 +428,7 @@ function Papers() {
             onCreated={() => {
               setShowForm(false);
               setLoading(true);
-              load();
+              setRefresh((n) => n + 1);
             }}
           />
         </div>
@@ -465,7 +479,7 @@ function Papers() {
                 >
                   <button
                     onClick={() =>
-                      toast.info("Opening a paper comes in the next step")
+                      router.push(`/teacher/courses/${id}/papers/${p._id}`)
                     }
                     className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                   >
