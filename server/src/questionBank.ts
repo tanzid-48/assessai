@@ -244,9 +244,29 @@ questionBankRouter.delete(
     if (!ObjectId.isValid(questionId)) {
       return res.status(400).json({ error: "Invalid question id" });
     }
+    const id = new ObjectId(questionId);
+
+    // A question that is used in a paper cannot be deleted, or the paper would get a hole
+    const usedIn = await getDB()
+      .collection("papers")
+      .findOne(
+        {
+          courseId: course._id,
+          $or: [
+            { "questions.parts.questionId": id },
+            { "questions.parts.orQuestionId": id },
+          ],
+        },
+        { projection: { title: 1 } },
+      );
+    if (usedIn) {
+      return res.status(409).json({
+        error: `This question is used in the paper "${usedIn.title}". Remove it from the paper first.`,
+      });
+    }
 
     const removed = await questionsCol().deleteOne({
-      _id: new ObjectId(questionId),
+      _id: id,
       courseId: course._id,
     });
     if (!removed.deletedCount) {
