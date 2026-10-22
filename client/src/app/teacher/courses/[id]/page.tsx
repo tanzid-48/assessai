@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ArrowLeft, FileText, Library, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import RoleGuard from "@/components/RoleGuard";
 import PageHeader from "@/components/PageHeader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import MaterialsPanel from "@/components/MaterialsPanel";
 import { api } from "@/lib/api";
-import { ArrowLeft, Library, Plus, Trash2 } from "lucide-react";
 
 type Clo = { _id: string; code: string; text: string };
 type Topic = { _id: string; name: string };
@@ -265,13 +265,22 @@ function CourseOutline() {
         title={outline.course.title}
         description={outline.course.code}
         action={
-          <Link
-            href={`/teacher/courses/${id}/questions`}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
-          >
-            <Library size={16} />
-            Question bank
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/teacher/courses/${id}/questions`}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+            >
+              <Library size={16} />
+              Question bank
+            </Link>
+            <Link
+              href={`/teacher/courses/${id}/papers`}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            >
+              <FileText size={16} />
+              Question papers
+            </Link>
+          </div>
         }
       />
 
