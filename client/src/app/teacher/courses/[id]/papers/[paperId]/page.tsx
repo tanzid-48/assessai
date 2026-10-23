@@ -11,6 +11,7 @@ import PaperHeaderForm from "@/components/PaperHeaderForm";
 import QuestionPicker from "@/components/QuestionPicker";
 import type { Question } from "@/components/QuestionCard";
 import { api } from "@/lib/api";
+import ExportMenu from "@/components/ExportMenu";
 
 type PaperQuestion = {
   _id: string;
@@ -311,13 +312,22 @@ function PaperEditor() {
           paper.batch ? ` · ${paper.batch} batch` : ""
         }${paper.semester ? ` · ${paper.semester} semester` : ""}`}
         action={
-          <button
-            onClick={() => setShowDetails((v) => !v)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-          >
-            {showDetails ? <X size={16} /> : <Pencil size={16} />}
-            {showDetails ? "Close" : "Edit details"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <ExportMenu
+              courseId={id}
+              paperId={paperId}
+              fileBase={paper.title}
+              blocked={problems.length > 0}
+              blockedReason={`${problems.length} thing${problems.length === 1 ? "" : "s"} to fix before exporting`}
+            />
+            <button
+              onClick={() => setShowDetails((v) => !v)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            >
+              {showDetails ? <X size={16} /> : <Pencil size={16} />}
+              {showDetails ? "Close" : "Edit details"}
+            </button>
+          </div>
         }
       />
 

@@ -149,9 +149,15 @@ function answerParagraphs(q: PaperQuestion) {
   out.push(...lines(q.answer, { color: "333333", after: 30 }));
 
   // The same file and page is listed once
-  const pages = [
-    ...new Set(q.sources.map((s) => `${s.fileName}, page ${s.page}`)),
-  ];
+  // Pages are grouped by file: "notes.pdf, pages 7, 8"
+  const byFile = new Map<string, number[]>();
+  for (const s of q.sources)
+    byFile.set(s.fileName, [...(byFile.get(s.fileName) ?? []), s.page]);
+  const pages = [...byFile].map(([file, list]) => {
+    const sorted = [...new Set(list)].sort((a, b) => a - b);
+    return `${file}, ${sorted.length > 1 ? "pages" : "page"} ${sorted.join(", ")}`;
+  });
+
   if (pages.length > 0) {
     out.push(
       line(`Source: ${pages.join("; ")}`, {

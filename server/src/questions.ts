@@ -220,11 +220,11 @@ Task: write ${args.count} different ${args.type} question(s) about this topic th
 Rules:
 - Every question and its answer must be fully supported by the excerpts. Never ask about something the excerpts do not cover.
 - ${TYPE_RULES[args.type]}
-- Start each question with an exam verb such as Define, Explain, Identify, Describe, Compare, Calculate or State.
+
 - "difficulty" is easy, medium or hard. "bloom" is one of: remember, understand, apply, analyze, evaluate, create.
 - "sources" lists the numbers of the excerpts that support the question and its answer, for example [2, 3].
 - For a calculation, work it out carefully and show the result in "answer".
-- The excerpts come from a PDF, so some words may be joined together by a reading error (for example "expected value"). Write such words correctly in the questions and answers.
+- The excerpts come from a PDF, so some words may be joined together by a reading error (for example "expected value"). -- Written questions (short and broad) start with an exam verb such as Define, Explain, Identify, Describe, Compare, Calculate or State. Multiple choice questions are direct questions, for example "Which of the following ...?" or "What is the value of ...?". Use a question mark only when the sentence is a question.Write such words correctly in the questions and answers.
 - Write formulas in plain text such as E[X] = 1/λ and (a + b) / 2. Do not use LaTeX or dollar signs.
 - Every question must stand alone on a printed exam paper. Never write phrases such as "according to the notes", "as presented in the study notes" or "in the text" inside a question.
 - If the excerpts do not hold enough new facts for ${args.count} different questions, write fewer questions.
