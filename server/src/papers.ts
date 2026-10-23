@@ -4,7 +4,7 @@ import { ObjectId, type Document, type WithId } from "mongodb";
 import { getDB } from "./db";
 import { requireRole } from "./middleware";
 import { loadCourse } from "./outline";
-
+import { renderDocx } from "./exportPaper";
 // Question papers: a teacher builds a paper from approved questions.
 // A paper has numbered questions, and every numbered question has parts (a, b, ...).
 // Every part has its own marks, one question and an optional "Or" choice.
@@ -427,5 +427,88 @@ papersRouter.delete(
     if (!removed.deletedCount)
       return res.status(404).json({ error: "Paper not found" });
     res.json({ ok: true });
+  },
+);
+const exportSchema = z.object({
+  format: z.enum(["docx", "pdf"]).default("docx"),
+  kind: z.enum(["paper", "key"]).default("paper"),
+});
+
+// Makes a file name safe for a Content-Disposition header (RFC 5987)
+const encodeName = (s: string) =>
+  encodeURIComponent(s).replace(
+    /['()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+
+// Download the paper (for the students) or the answer key (for the teacher).
+// A paper with problems (empty places, questions that are not approved any more) is not exported.
+papersRouter.get(
+  "/:courseId/papers/:paperId/export",
+  requireRole("admin", "teacher"),
+  async (req, res) => {
+    const result = await loadCourse(
+      String(req.params.courseId),
+      res.locals.user,
+    );
+    if ("error" in result)
+      return res.status(result.status).json({ error: result.error });
+    const { course } = result;
+
+    const parsed = exportSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({
+          error: "format must be docx or pdf and kind must be paper or key",
+        });
+    }
+    const { format, kind } = parsed.data;
+
+    const paper = await loadPaper(course._id, String(req.params.paperId));
+    if (!paper) return res.status(404).json({ error: "Paper not found" });
+
+    const detail = await buildDetail(paper);
+    if (detail.problems.length > 0) {
+      return res.status(409).json({
+        error: "Fix the problems of this paper before exporting it",
+        problems: detail.problems,
+      });
+    }
+
+    if (format !== "docx") {
+      return res
+        .status(400)
+        .json({ error: "PDF export is added in the next step" });
+    }
+
+    try {
+      const file = await renderDocx(detail, kind, {
+        code: String(course.code),
+        title: String(course.title),
+      });
+
+      const base = `${course.code} ${paper.title} ${kind === "key" ? "Answer key" : "Question paper"}`;
+      const ascii =
+        base
+          .replace(/[^A-Za-z0-9 _-]+/g, "")
+          .trim()
+          .replace(/\s+/g, "_") || "question_paper";
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${ascii}.docx"; filename*=UTF-8''${encodeName(base)}.docx`,
+      );
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Length", String(file.length));
+      res.send(file);
+    } catch (err) {
+      console.error("Word export failed:", err);
+      res.status(500).json({ error: "Could not create the Word file" });
+    }
   },
 );
