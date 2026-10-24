@@ -275,7 +275,10 @@ assessmentsRouter.delete(
     const a = await loadAssessment(course._id, String(req.params.assessmentId));
     if (!a) return res.status(404).json({ error: "Exam not found" });
 
-    const started = await attemptsCol().countDocuments({ assessmentId: a._id });
+    const started = await attemptsCol().countDocuments({
+      assessmentId: a._id,
+      mode: "formal",
+    });
     if (started > 0) {
       return res.status(409).json({
         error:

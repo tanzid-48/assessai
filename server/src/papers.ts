@@ -281,6 +281,7 @@ papersRouter.get(
           questionCount: (p.questions ?? []).length,
           slotCount: slots.length,
           filledCount: slots.filter((s) => s.questionId).length,
+          durationMinutes: p.durationMinutes,
           updatedAt: p.updatedAt,
         };
       }),
@@ -457,11 +458,9 @@ papersRouter.get(
 
     const parsed = exportSchema.safeParse(req.query);
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json({
-          error: "format must be docx or pdf and kind must be paper or key",
-        });
+      return res.status(400).json({
+        error: "format must be docx or pdf and kind must be paper or key",
+      });
     }
     const { format, kind } = parsed.data;
 

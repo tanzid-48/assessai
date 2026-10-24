@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, FileText, Library, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ClipboardCheck,
+  FileText,
+  Library,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import RoleGuard from "@/components/RoleGuard";
 import PageHeader from "@/components/PageHeader";
@@ -279,6 +286,13 @@ function CourseOutline() {
             >
               <FileText size={16} />
               Question papers
+            </Link>
+            <Link
+              href={`/teacher/courses/${id}/assessments`}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            >
+              <ClipboardCheck size={16} />
+              Exams
             </Link>
           </div>
         }
