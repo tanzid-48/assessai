@@ -25,7 +25,7 @@ const createSchema = z.object({
   title: z.string().trim().min(3).max(120).optional(),
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
-  durationMinutes: z.number().int().min(5).max(600).optional(),
+  durationMinutes: z.number().int().min(1).max(600).optional(),
   shuffleQuestions: z.boolean().default(true),
   shuffleOptions: z.boolean().default(true),
 });
@@ -205,7 +205,7 @@ assessmentsRouter.get(
     const grouped = ids.length
       ? await attemptsCol()
           .aggregate([
-            { $match: { assessmentId: { $in: ids } } },
+            { $match: { assessmentId: { $in: ids }, mode: "formal" } },
             {
               $group: {
                 _id: { a: "$assessmentId", s: "$status" },
@@ -277,12 +277,10 @@ assessmentsRouter.delete(
 
     const started = await attemptsCol().countDocuments({ assessmentId: a._id });
     if (started > 0) {
-      return res
-        .status(409)
-        .json({
-          error:
-            "Students have already started this exam, so it cannot be deleted",
-        });
+      return res.status(409).json({
+        error:
+          "Students have already started this exam, so it cannot be deleted",
+      });
     }
 
     await assessmentsCol().deleteOne({ _id: a._id });

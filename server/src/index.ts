@@ -15,7 +15,7 @@ import { questionsRouter } from "./questions";
 import { questionBankRouter } from "./questionBank";
 import { papersRouter } from "./papers";
 import { assessmentsRouter } from "./assessments";
-
+import { examsRouter, examReportRouter, ensureAttemptIndexes } from "./exams";
 
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
@@ -73,6 +73,8 @@ app.use("/api/courses", questionsRouter);
 app.use("/api/courses", questionBankRouter);
 app.use("/api/courses", papersRouter);
 app.use("/api/courses", assessmentsRouter);
+app.use("/api/courses", examReportRouter);
+app.use("/api/exams", examsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/enrollments", enrollmentsRouter);
 
@@ -99,6 +101,7 @@ app.use(
 async function main() {
   await connectDB();
   await ensureEnrollmentIndexes();
+  await ensureAttemptIndexes();
   app.listen(PORT, () => {
     console.log(`AssessAI server running on http://localhost:${PORT}`);
   });
