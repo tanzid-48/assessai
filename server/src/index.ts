@@ -14,6 +14,7 @@ import { searchRouter } from "./search";
 import { questionsRouter } from "./questions";
 import { questionBankRouter } from "./questionBank";
 import { papersRouter } from "./papers";
+import { assessmentsRouter } from "./assessments";
 
 
 const PORT = Number(process.env.PORT) || 5000;
@@ -71,6 +72,7 @@ app.use("/api/courses", searchRouter);
 app.use("/api/courses", questionsRouter);
 app.use("/api/courses", questionBankRouter);
 app.use("/api/courses", papersRouter);
+app.use("/api/courses", assessmentsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/enrollments", enrollmentsRouter);
 
