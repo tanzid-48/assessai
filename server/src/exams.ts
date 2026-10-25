@@ -155,12 +155,10 @@ export async function blockDuringExam(
 ) {
   const examId = await hasActiveAttempt(new ObjectId(res.locals.user.id));
   if (examId) {
-    return res
-      .status(403)
-      .json({
-        error: "This is not available while an exam is in progress",
-        examId,
-      });
+    return res.status(403).json({
+      error: "This is not available while an exam is in progress",
+      examId,
+    });
   }
   next();
 }
@@ -378,6 +376,7 @@ examsRouter.get("/", async (_req, res) => {
         durationMinutes: a.durationMinutes,
         totalMarks: a.totalMarks,
         itemCount: a.itemCount ?? 0,
+        resultsPublished: Boolean(a.resultsPublished),
         state: stateOf({
           startsAt: a.startsAt as Date,
           endsAt: a.endsAt as Date,
