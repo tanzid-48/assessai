@@ -17,6 +17,7 @@ import { papersRouter } from "./papers";
 import { assessmentsRouter } from "./assessments";
 import { examsRouter, examReportRouter, ensureAttemptIndexes } from "./exams";
 import { gradingRouter, studentResultRouter } from "./grading";
+import { aiGradingRouter } from "./aiGrading";
 
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
@@ -77,6 +78,7 @@ app.use("/api/courses", assessmentsRouter);
 app.use("/api/courses", examReportRouter);
 app.use("/api/exams", examsRouter);
 app.use("/api/courses", gradingRouter);
+app.use("/api/courses", aiGradingRouter);
 app.use("/api/exams", studentResultRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/enrollments", enrollmentsRouter);

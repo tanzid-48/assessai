@@ -435,6 +435,12 @@ function ExamCard({ exam, courseId, leaving, onDelete }: CardProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          <Link
+            href={`/teacher/courses/${courseId}/assessments/${exam._id}`}
+            className="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-500"
+          >
+            Marking
+          </Link>
           <button
             onClick={toggle}
             aria-expanded={open}

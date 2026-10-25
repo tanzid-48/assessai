@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import RoleGuard from "@/components/RoleGuard";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { api } from "@/lib/api";
+import ResultPanel from "@/components/ResultPanel";
 
 type Q = {
   type: "mcq" | "short" | "broad";
@@ -646,6 +647,7 @@ function ExamPlayer() {
             Your marks will appear here after your teacher has checked and
             published them.
           </p>
+          <ResultPanel examId={examId} />
           <Link
             href="/student/exams"
             className="mt-6 inline-flex items-center justify-center rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
