@@ -70,7 +70,7 @@ export const NAV: Record<Role, NavItem[]> = {
   student: [
     { label: "Dashboard", href: "/student", icon: LayoutDashboard },
     { label: "Practice", href: "/student/practice", icon: Pencil, soon: true },
-    { label: "Exams", href: "/student/exams", icon: Timer, soon: true },
+    { label: "Exams", href: "/student/exams", icon: Timer },
     {
       label: "Feedback",
       href: "/student/feedback",
