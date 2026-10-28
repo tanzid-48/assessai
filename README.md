@@ -1,6 +1,6 @@
 # PUB AssessAI
 
-**Demo video (5 to 10 minutes): <PASTE THE YOUTUBE UNLISTED OR GOOGLE DRIVE LINK HERE>**
+**Demo video (5 to 10 minutes): <https://drive.google.com/file/d/1nzUKcp0H-bQvd4-I4d7CT6kgcf2PnVf7/view?usp=sharing>**
 
 |             |                                                                           |
 | ----------- | ------------------------------------------------------------------------- |
