@@ -69,7 +69,7 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   student: [
     { label: "Dashboard", href: "/student", icon: LayoutDashboard },
-    { label: "Practice", href: "/student/practice", icon: Pencil, soon: true },
+    { label: "Practice", href: "/student/practice", icon: Pencil },
     { label: "Exams", href: "/student/exams", icon: Timer },
     {
       label: "Feedback",
@@ -81,7 +81,6 @@ export const NAV: Record<Role, NavItem[]> = {
       label: "Progress",
       href: "/student/progress",
       icon: TrendingUp,
-      soon: true,
     },
   ],
 };
