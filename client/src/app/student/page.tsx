@@ -56,7 +56,7 @@ function StudentHome() {
     month: "long",
     year: "numeric",
   });
-  const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0);
+   const totalCredits = courses.reduce((sum, c) => sum + (Number(c.credits) || 0), 0);
 
   return (
     <>

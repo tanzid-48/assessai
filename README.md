@@ -11,13 +11,13 @@
 
 ## Team
 
-| Member                         | Student ID       | Batch | Role   |
-| ------------------------------ | ---------------- | ----- | ------ |
-| Md Tanzid Mondol (Team Leader) | 0322320105101048 | 23rd  | <role> |
-| Md Arif Hasan                  | 0322320105101029 | 23rd  | <role> |
-| Md Samiul Islam                | 0322320105101001 | 23rd  | <role> |
-| Rubayat Islam Khan             | 03225205101028   | 27th  | <role> |
-| Md Forhad Islam                | 03226105101017   | 28th  | <role> |
+| Member                         | Student ID       | Batch | 
+| ------------------------------ | ---------------- | ----- | 
+| Md Tanzid Mondol (Team Leader) | 0322320105101048 | 23rd  | 
+| Md Arif Hasan                  | 0322320105101029 | 23rd  | 
+| Md Samiul Islam                | 0322320105101001 | 23rd  | 
+| Rubayat Islam Khan             | 03225205101028   | 27th  | 
+| Md Forhad Islam                | 03226105101017   | 28th  | 
 
 ## The problem and our solution
 
@@ -226,12 +226,3 @@ client/src   app/ (pages by role: admin, teacher, student), components/, lib/
 - The AI uses a free Gemini plan, so heavy use can reach its limit. The app shows a clear message and the teacher can run the marking again.
 - Tab switches are recorded for the teacher. No automatic action is taken against a student.
 
-## Team contribution
-
-| Member             | Work                     |
-| ------------------ | ------------------------ |
-| Md Tanzid Mondol   | <what this person built> |
-| Md Arif Hasan      | <...>                    |
-| Md Samiul Islam    | <...>                    |
-| Rubayat Islam Khan | <...>                    |
-| Md Forhad Islam    | <...>                    |
