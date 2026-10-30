@@ -1,20 +1,17 @@
-import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const nextConfig: NextConfig = {
-  /* config options here */
-  experimental: {
-    agentFeedback: true,
-  },
-  cacheComponents: true,
-  partialPrefetching: true,
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
+const here = path.dirname(fileURLToPath(import.meta.url));
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  turbopack: { root: here },
+  // On Vercel: send /api requests to the Render server (keeps the login cookie on one site)
+  async rewrites() {
+    const target = process.env.API_PROXY_TARGET;
+    return target
+      ? [{ source: "/api/:path*", destination: `${target}/api/:path*` }]
+      : [];
   },
 };
-
 export default nextConfig;

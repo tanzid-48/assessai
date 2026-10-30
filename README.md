@@ -42,7 +42,7 @@ Two rules run through the whole system: **the AI never decides alone** (every AI
 | **Teacher**       | Add CLOs and topics, upload materials, generate and approve questions, build question papers and answer keys (Word export), create timed exams, write and approve marking schemes, mark with AI, moderate and publish results, see class analytics |
 | **Student**       | See own exams, take timed exams, see published results with comments and sources, practise by topic, ask the AI tutor, see own progress and weak topics                                                                                            |
 
-Roles are stored on the account and checked **on the server** for every request. A user cannot give themselves a role when signing up.
+Roles are stored on the account and checked **on the server** for every request.
 
 ## Feature status (B2 required features)
 
